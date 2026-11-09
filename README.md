@@ -84,15 +84,3 @@ Phishing-detector-tool/
 ```
 
 ---
-
-## 📜 Academic Citation
-
-```bibtex
-@misc{phiusiil_2024,
-  author       = {Prasad, Arvind and Chandra, Shishir},
-  title        = {PhiUSIIL Phishing URL Dataset},
-  year         = {2024},
-  howpublished = {UCI Machine Learning Repository},
-  doi          = {10.24432/C5654X}
-}
-```
