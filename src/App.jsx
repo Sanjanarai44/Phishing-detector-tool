@@ -8,18 +8,17 @@ import AboutView from './components/AboutView';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('scanner');
-  const [currentVerdictState, setCurrentVerdictState] = useState('phishing');
-  const [customScannedUrl, setCustomScannedUrl] = useState('');
+  const [scanResult, setScanResult] = useState(null);
+  const [history, setHistory] = useState([]); // this browser session only
 
-  const handleScanComplete = (url, verdict) => {
-    setCustomScannedUrl(url);
-    setCurrentVerdictState(verdict);
+  const handleScanComplete = (url, result) => {
+    setScanResult(result);
+    setHistory((h) => [{ url, verdict: result.verdict, risk: result.phishing_probability, result }, ...h].slice(0, 8));
     setActiveTab('results-and-analysis');
   };
 
-  const handleSelectSample = (stateKey, url) => {
-    setCurrentVerdictState(stateKey);
-    setCustomScannedUrl(url);
+  const handleOpenHistory = (item) => {
+    setScanResult(item.result);
     setActiveTab('results-and-analysis');
   };
 
@@ -35,17 +34,16 @@ export default function App() {
         {activeTab === 'scanner' && (
           <ScannerView
             onScanComplete={handleScanComplete}
-            onSelectSample={handleSelectSample}
+            history={history}
+            onOpenHistory={handleOpenHistory}
             setActiveTab={setActiveTab}
           />
         )}
 
         {activeTab === 'results-and-analysis' && (
           <ResultsView
-            currentStateKey={currentVerdictState}
-            onStateChange={(stateKey) => setCurrentVerdictState(stateKey)}
+            result={scanResult}
             onScanAnother={handleScanAnother}
-            customScannedUrl={customScannedUrl}
           />
         )}
 

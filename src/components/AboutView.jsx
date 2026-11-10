@@ -72,10 +72,10 @@ export default function AboutView({ setActiveTab }) {
               <h2>The Solution: Structural Heuristics</h2>
             </div>
             <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
-              PhishGuard bypasses blacklist lag by extracting <strong>58 invariant lexical, topological, and protocol vectors</strong> directly from target URLs and network channels without needing the destination domain to be previously cataloged.
+              PhishGuard bypasses blacklist lag by extracting <strong>19 lexical features</strong> directly from the URL text, without opening the page and without needing the domain to be on a blocklist.
             </p>
             <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
-              By pairing an ensemble of <strong>XGBoost + LightGBM</strong> with <strong>SHAP TreeExplainer</strong> attribution, PhishGuard delivers sub-50ms zero-day classifications accompanied by full explainability.
+              By pairing an <strong>XGBoost</strong> classifier with per-prediction feature contributions (XGBoost's built-in SHAP-style values), PhishGuard returns a verdict with plain-English reasons.
             </p>
           </div>
         </div>

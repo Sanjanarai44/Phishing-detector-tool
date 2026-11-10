@@ -1,98 +1,57 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { recentTelemetry } from '../data/verdictData';
+import { scanUrl } from '../api';
 
-export default function ScannerView({ onScanComplete, onSelectSample, setActiveTab }) {
+export default function ScannerView({ onScanComplete, history = [], onOpenHistory, setActiveTab }) {
   const [urlInput, setUrlInput] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   const [elapsedTime, setElapsedTime] = useState('0.00s');
   const [currentScanningUrl, setCurrentScanningUrl] = useState('');
   const [activeStage, setActiveStage] = useState(0); // 1, 2, 3
+  const [errorMsg, setErrorMsg] = useState('');
 
   const liveScanRef = useRef(null);
   const timerIntervalRef = useRef(null);
 
-  const determineVerdict = (url) => {
-    const lower = url.toLowerCase();
-    if (
-      lower.includes('stanford.edu') ||
-      lower.includes('github.com') ||
-      lower.includes('chase.com') ||
-      lower.includes('google.com')
-    ) {
-      return 'safe';
-    }
-    if (
-      lower.includes('bit.ly') ||
-      lower.includes('tinyurl') ||
-      lower.includes('redirect')
-    ) {
-      return 'suspicious';
-    }
-    if (
-      lower.includes('paypal') ||
-      lower.includes('account-verify') ||
-      lower.includes('.online') ||
-      lower.includes('login.php') ||
-      lower.includes('192.168.') ||
-      lower.includes('wellsfargo') ||
-      lower.startsWith('http://')
-    ) {
-      return 'phishing';
-    }
-    // Default safe or phishing based on length/http
-    return lower.startsWith('https://') ? 'safe' : 'phishing';
-  };
-
-  const triggerScan = (urlToScan) => {
+  const triggerScan = async (urlToScan) => {
     const target = (urlToScan || urlInput).trim();
-    if (!target) return;
+    if (!target || isScanning) return;
 
+    setErrorMsg('');
     setCurrentScanningUrl(target);
     setIsScanning(true);
-    setScanProgress(10);
+    setScanProgress(15);
     setActiveStage(1);
     setElapsedTime('0.00s');
 
-    // Scroll into view
     setTimeout(() => {
       liveScanRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 50);
 
     const startTime = Date.now();
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-
     timerIntervalRef.current = setInterval(() => {
-      const elapsed = (Date.now() - startTime) / 1000;
-      setElapsedTime(elapsed.toFixed(2) + 's');
+      setElapsedTime(((Date.now() - startTime) / 1000).toFixed(2) + 's');
     }, 50);
 
-    // Sequence stage 1 completion
-    setTimeout(() => {
-      setScanProgress(45);
-      setActiveStage(2);
-    }, 400);
+    setTimeout(() => { setScanProgress(45); setActiveStage(2); }, 250);
+    setTimeout(() => { setScanProgress(80); setActiveStage(3); }, 500);
 
-    // Sequence stage 2 completion
-    setTimeout(() => {
-      setScanProgress(80);
-      setActiveStage(3);
-    }, 850);
-
-    // Final completion & transition
-    setTimeout(() => {
+    try {
+      // Real request to the backend; wait at least 700 ms so the progress steps are readable.
+      const [result] = await Promise.all([
+        scanUrl(target),
+        new Promise((resolve) => setTimeout(resolve, 700)),
+      ]);
       setScanProgress(100);
-      setActiveStage(4); // All done
+      setActiveStage(4);
+      onScanComplete(target, result);
+    } catch (err) {
+      setErrorMsg(err.message || 'Scan failed.');
+    } finally {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-      setElapsedTime('1.20s');
-
-      const verdict = determineVerdict(target);
-
-      setTimeout(() => {
-        setIsScanning(false);
-        onScanComplete(target, verdict);
-      }, 500);
-    }, 1200);
+      setIsScanning(false);
+    }
   };
 
   const handleSubmit = (e) => {
@@ -179,17 +138,23 @@ export default function ScannerView({ onScanComplete, onSelectSample, setActiveT
               </button>
             </form>
 
+            {errorMsg && (
+              <div className="mt-3 mx-2 p-3 rounded-xl bg-error-container text-on-error-container font-body-sm text-body-sm" role="alert">
+                {errorMsg}
+              </div>
+            )}
+
             {/* Quick-Try Example Pills */}
             <div className="flex flex-wrap items-center gap-3 pt-3 px-2 mt-1">
               <span className="font-label-sm text-label-sm text-outline uppercase tracking-wider">Quick Try:</span>
               {/* Safe Example */}
               <button
                 className="group inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container-low hover:bg-surface-container text-on-surface font-code-mono text-label-sm transition-all text-left truncate max-w-[280px] sm:max-w-none cursor-pointer"
-                onClick={() => handleQuickTry('https://www.stanford.edu/academics')}
+                onClick={() => handleQuickTry('https://www.wikipedia.org')}
                 type="button"
               >
                 <span className="w-2 h-2 rounded-full bg-tertiary-fixed-dim ring-2 ring-tertiary-fixed/30 shrink-0"></span>
-                <span className="truncate">https://www.stanford.edu/academics</span>
+                <span className="truncate">https://www.wikipedia.org</span>
                 <span className="material-symbols-outlined text-[14px] text-outline group-hover:text-primary transition-colors shrink-0">
                   arrow_forward
                 </span>
@@ -197,11 +162,11 @@ export default function ScannerView({ onScanComplete, onSelectSample, setActiveT
               {/* Phishing Example */}
               <button
                 className="group inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container-low hover:bg-surface-container text-on-surface font-code-mono text-label-sm transition-all text-left truncate max-w-[320px] sm:max-w-none cursor-pointer"
-                onClick={() => handleQuickTry('http://paypal-security-update.account-verify.online/login.php')}
+                onClick={() => handleQuickTry('http://paypal-support.com.desenvolvedortheosbank.com.br/login.php')}
                 type="button"
               >
                 <span className="w-2 h-2 rounded-full bg-error ring-2 ring-error/30 shrink-0"></span>
-                <span className="truncate">http://paypal-security-update.account-verify.online/login.php</span>
+                <span className="truncate">http://paypal-support.com.desenvolvedortheosbank.com.br/login.php</span>
                 <span className="material-symbols-outlined text-[14px] text-outline group-hover:text-error transition-colors shrink-0">
                   arrow_forward
                 </span>
@@ -343,7 +308,7 @@ export default function ScannerView({ onScanComplete, onSelectSample, setActiveT
               Architecture
             </span>
             <h2 className="font-headline-md text-headline-md text-primary font-semibold">
-              Triangulated Phishing Detection Pipeline
+              How the Detector Works
             </h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
@@ -376,14 +341,14 @@ export default function ScannerView({ onScanComplete, onSelectSample, setActiveT
                   <span className="material-symbols-outlined text-[24px]">neurology</span>
                 </div>
                 <div className="font-label-sm text-label-sm uppercase tracking-wider text-outline mb-1">Step 02</div>
-                <h3 className="font-headline-sm text-headline-sm font-semibold text-primary mb-2">AI Analyzes 50+ Features</h3>
+                <h3 className="font-headline-sm text-headline-sm font-semibold text-primary mb-2">Model Analyzes 19 URL Features</h3>
                 <p className="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
                   Synthesizing lexical heuristics, registration lifespan, IP host detection, multi-hop redirect chains, and character entropy.
                 </p>
               </div>
               <div className="mt-4 pt-3 flex items-center gap-2">
                 <span className="font-code-mono text-label-sm px-2 py-0.5 rounded bg-surface-container-low text-on-surface-variant">
-                  54 Feature Vectors
+                  19 URL Features
                 </span>
               </div>
             </div>
@@ -402,7 +367,7 @@ export default function ScannerView({ onScanComplete, onSelectSample, setActiveT
               </div>
               <div className="mt-4 pt-3 flex items-center gap-2">
                 <span className="font-code-mono text-label-sm px-2 py-0.5 rounded bg-surface-container-low text-on-surface-variant">
-                  Instant SHAP Insights
+                  Per-URL Explanations
                 </span>
               </div>
             </div>
@@ -417,39 +382,31 @@ export default function ScannerView({ onScanComplete, onSelectSample, setActiveT
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-secondary text-[22px]">history</span>
                 <div>
-                  <h3 className="font-headline-sm text-headline-sm font-semibold text-primary">Recent Community Telemetry</h3>
-                  <p className="font-body-sm text-body-sm text-on-surface-variant">Last inspected links across all public nodes</p>
+                  <h3 className="font-headline-sm text-headline-sm font-semibold text-primary">Your Scans This Session</h3>
+                  <p className="font-body-sm text-body-sm text-on-surface-variant">Stored only in this browser tab; cleared on refresh</p>
                 </div>
               </div>
               <span className="font-label-sm text-label-sm text-outline uppercase tracking-wider bg-surface-container-low px-2.5 py-1 rounded-full">
-                Live Stream
+                Session
               </span>
             </div>
 
             {/* History Table Rows */}
             <div className="divide-y divide-surface-container overflow-x-auto">
-              {recentTelemetry.map((item) => (
-                <div
-                  key={item.id}
-                  className="py-3.5 flex items-center justify-between gap-4 hover:bg-surface-container-low/50 px-2 rounded-lg transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className={`w-2.5 h-2.5 rounded-full ${item.dotColor} shrink-0`} title={item.status}></span>
-                    <div className="min-w-0">
-                      <span className="font-code-mono text-body-sm text-on-surface font-medium truncate block">
-                        {item.url}
-                      </span>
-                      <span className="font-body-sm text-body-sm text-outline-variant text-[12px]">
-                        {item.time} • {item.note}
-                      </span>
-                    </div>
-                  </div>
+              {history.length === 0 && (
+                <p className="py-6 text-center font-body-sm text-body-sm text-on-surface-variant">
+                  No scans yet. Paste a URL above to start.
+                </p>
+              )}
+              {history.map((item, idx) => (
+                <div key={idx} className="py-3.5 flex items-center justify-between gap-4 hover:bg-surface-container-low/50 px-2 rounded-lg transition-colors">
+                  <span className="font-code-mono text-body-sm text-on-surface font-medium truncate block min-w-0">{item.url}</span>
                   <div className="flex items-center gap-4 shrink-0">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full ${item.badgeBg} ${item.badgeText} font-label-sm text-label-sm font-semibold`}>
-                      {item.status} {item.score}
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-surface-container text-on-surface font-label-sm text-label-sm font-semibold">
+                      {item.verdict} · risk {(item.risk * 100).toFixed(1)}%
                     </span>
                     <button
-                      onClick={() => onSelectSample(item.stateKey, item.url)}
+                      onClick={() => onOpenHistory && onOpenHistory(item)}
                       className="font-label-md text-label-md text-secondary hover:text-primary transition-colors flex items-center gap-0.5 cursor-pointer"
                       type="button"
                     >
@@ -471,12 +428,12 @@ export default function ScannerView({ onScanComplete, onSelectSample, setActiveT
                 <span className="font-label-sm text-label-sm uppercase tracking-wider text-primary font-bold">Pro Tip</span>
               </div>
               <p className="font-body-md text-body-md text-on-surface leading-relaxed mb-4">
-                Attackers frequently use <strong>punycode</strong> or <strong>raw IP addresses</strong> to bypass basic filters. Our model checks both simultaneously.
+                PhishGuard only reads the <strong>text of the URL</strong>. It never opens the page, so treat the result as a hint, not proof.
               </p>
               <div className="p-3 bg-surface-container-lowest/80 rounded-xl">
                 <div className="font-code-mono text-label-sm text-primary font-medium mb-1">Example:</div>
                 <div className="font-code-mono text-[11px] text-on-surface-variant truncate">
-                  xn--e1afmkfd.xn--p1ai → Cyrillic homograph
+                  Never enter passwords on a page you reached from an unexpected link
                 </div>
               </div>
             </div>
@@ -484,25 +441,25 @@ export default function ScannerView({ onScanComplete, onSelectSample, setActiveT
             {/* Academic Sandbox Stats */}
             <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4">
-                <span className="font-label-sm text-label-sm uppercase tracking-wider text-outline">Dataset Benchmark</span>
+                <span className="font-label-sm text-label-sm uppercase tracking-wider text-outline">Held-out Test Split</span>
                 <span className="px-2 py-0.5 rounded bg-surface-container text-primary font-code-mono text-label-sm font-semibold">
-                  UCI PhiUSIIL
+                  PhiUSIIL
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 rounded-xl bg-surface-container-low text-center">
-                  <span className="font-headline-md text-headline-md font-bold text-primary block">99.1%</span>
-                  <span className="font-label-sm text-label-sm text-outline-variant">Validation F1</span>
+                  <span className="font-headline-md text-headline-md font-bold text-primary block">99.7%</span>
+                  <span className="font-label-sm text-label-sm text-outline-variant">Accuracy (this dataset)</span>
                 </div>
                 <div className="p-3 rounded-xl bg-surface-container-low text-center">
-                  <span className="font-headline-md text-headline-md font-bold text-primary block">1.2s</span>
-                  <span className="font-label-sm text-label-sm text-outline-variant">Median Latency</span>
+                  <span className="font-headline-md text-headline-md font-bold text-primary block">33,953</span>
+                  <span className="font-label-sm text-label-sm text-outline-variant">Test URLs</span>
                 </div>
               </div>
               <div className="mt-4 pt-3 flex items-center justify-between text-on-surface-variant font-body-sm text-body-sm">
                 <span className="flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-[18px] text-tertiary">check_circle</span>
-                  <span>235,000+ Verified URLs</span>
+                  <span>~235K training URLs</span>
                 </span>
                 <button
                   onClick={() => setActiveTab && setActiveTab('model-insights')}
