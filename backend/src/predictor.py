@@ -6,7 +6,12 @@ predict_proba(X)[:, 1] = P(Legitimate); phishing risk = 1 - P(Legitimate).
 import os
 import joblib
 import pandas as pd
+import sklearn.compose._column_transformer
 from .feature_extraction import FEATURE_COLUMNS, extract_features
+
+# Compatibility shim for unpickling ColumnTransformer across sklearn versions
+if not hasattr(sklearn.compose._column_transformer, '_RemainderColsList'):
+    sklearn.compose._column_transformer._RemainderColsList = type('_RemainderColsList', (list,), {})
 
 MODEL_PATH = os.environ.get(
     "PHISHGUARD_MODEL",
