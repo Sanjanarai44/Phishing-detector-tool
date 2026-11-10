@@ -1,0 +1,42 @@
+[
+ {
+  "feature": "IsHTTPS",
+  "mean_abs_contribution": 3.51,
+  "share": 0.218
+ },
+ {
+  "feature": "DomainLength",
+  "mean_abs_contribution": 3.323,
+  "share": 0.207
+ },
+ {
+  "feature": "LetterRatioInURL",
+  "mean_abs_contribution": 2.287,
+  "share": 0.142
+ },
+ {
+  "feature": "URLLength",
+  "mean_abs_contribution": 2.105,
+  "share": 0.131
+ },
+ {
+  "feature": "NoOfOtherSpecialCharsInURL",
+  "mean_abs_contribution": 1.513,
+  "share": 0.094
+ },
+ {
+  "feature": "NoOfDegitsInURL",
+  "mean_abs_contribution": 0.653,
+  "share": 0.041
+ },
+ {
+  "feature": "DegitRatioInURL",
+  "mean_abs_contribution": 0.608,
+  "share": 0.038
+ },
+ {
+  "feature": "NoOfLettersInURL",
+  "mean_abs_contribution": 0.547,
+  "share": 0.034
+ }
+]
